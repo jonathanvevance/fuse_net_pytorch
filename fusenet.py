@@ -205,8 +205,9 @@ model = FuseNet().to(device)
 model.apply(initialize_weights)
 criterion = nn.CrossEntropyLoss()
 # optimizer = optim.Adam(model.parameters(), lr = 0.0001) # 0.0001 (sli oscillating)
-optimizer = optim.SGD(model.parameters(), momentum = 0.9, lr = 0.01) # 0.0001 (sli oscillating)
+optimizer = optim.SGD(model.parameters(), momentum = 0.9, lr = 0.0001) # 0.0001 (sli oscillating)
 
+print(f'SGD with lr = 0.0001')
 
 def train():
 
@@ -242,7 +243,7 @@ def train():
 
                     avg_loss = sum(avg_loss) / len(avg_loss)
                     avg_accuracy = sum(avg_accuracy) / len(avg_accuracy)
-                    print(f"\nTest loss = {avg_loss}; Trest accuracy = {avg_accuracy}")
+                    print(f"\nTest loss = {avg_loss}; Test accuracy = {avg_accuracy}")
 
     print('Finished Training')
 
