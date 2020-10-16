@@ -108,7 +108,7 @@ class FuseNet(nn.Module):
         self.batch_norm_1c = nn.BatchNorm2d(num_features = 16)
 
         self.fuse_2 = FuseBlock(
-            inC = 16, exp = 16, K = 3, stride = 2, oup = 16, is_SE = True, activ_func = nn.ReLU()
+            inC = 16, exp = 16, K = 3, stride = 2, oup = 16, is_SE = True, activ_func = nn.ReLU())
 
         self.fuse_3 = FuseBlock(
             inC = 16, exp = 72, K = 3, stride = 2, oup = 24, is_SE = False, activ_func = nn.ReLU()
