@@ -208,7 +208,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), momentum = 0.9, lr = 0.01) # 0.0001 (sli oscillating)
 
 
-def train()
+def train():
 
     for epoch in range(5):
         print(f'\nepoch {epoch}')
@@ -247,3 +247,5 @@ def train()
                     print(f"\n Train set accuracy = {avg_accuracy}   Train set loss = {avg_loss}")
 
     print('Finished Training')
+
+train()
