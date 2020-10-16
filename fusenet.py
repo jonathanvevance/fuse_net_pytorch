@@ -244,7 +244,7 @@ def train():
                             break
                     avg_loss = sum(avg_loss) / len(avg_loss)
                     avg_accuracy = sum(avg_accuracy) / len(avg_accuracy)
-                    print(f"\n Train set accuracy = {avg_accuracy}   Train set loss = {avg_loss}")
+                    print(f"\nTrain set loss = {avg_loss}; Train set accuracy = {avg_accuracy}")
 
     print('Finished Training')
 
