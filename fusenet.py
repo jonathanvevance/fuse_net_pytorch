@@ -231,18 +231,18 @@ def train():
             if (i % 2000 == 0) and (i > 0):
                 with torch.no_grad():
                     avg_loss, avg_accuracy = [], []
-                    for j, (X, y) in enumerate(test_loader):
-                        X, y = X.to(device), y.to(device)
-                        preds = model(X).squeeze()
-                        loss = criterion(preds, y)
-                        avg_loss.append(loss)
-                        preds = torch.argmax(preds, dim = 1)
-                        accuracy = (preds == labels).float().mean()
-                        avg_accuracy.append(accuracy)
+                    for j, (input_test, y_test) in enumerate(test_loader):
+                        input_test, y_test = input_test.to(device), y_test.to(device)
+                        test_preds = model(input_test).squeeze()
+                        test_loss = criterion(test_preds, y_test)
+                        avg_loss.append(test_loss.item())
+                        test_preds = torch.argmax(test_preds, dim = 1)
+                        test_acc = (test_preds == y_test).float().mean()
+                        avg_accuracy.append(test_acc)
 
                     avg_loss = sum(avg_loss) / len(avg_loss)
                     avg_accuracy = sum(avg_accuracy) / len(avg_accuracy)
-                    print(f"\nTrain set loss = {avg_loss}; Train set accuracy = {avg_accuracy}")
+                    print(f"\nTest loss = {avg_loss}; Trest accuracy = {avg_accuracy}")
 
     print('Finished Training')
 
