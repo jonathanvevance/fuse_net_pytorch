@@ -111,7 +111,7 @@ class FuseNet(nn.Module):
             inC = 16, exp = 16, K = 3, stride = 2, oup = 16, is_SE = True, activ_func = nn.ReLU())
 
         self.fuse_3 = FuseBlock(
-            inC = 16, exp = 72, K = 3, stride = 2, oup = 24, is_SE = False, activ_func = nn.ReLU()
+            inC = 16, exp = 72, K = 3, stride = 2, oup = 24, is_SE = False, activ_func = nn.ReLU())
 
         self.fuse_4 = FuseBlock(
             inC = 24, exp = 88, K = 3, stride = 1, oup = 24, is_SE = False, activ_func = nn.ReLU())
