@@ -231,7 +231,7 @@ def train():
             if (i % 2000 == 0) and (i > 0):
                 with torch.no_grad():
                     avg_loss, avg_accuracy = [], []
-                    for j, (X, y) in enumerate(train_loader):
+                    for j, (X, y) in enumerate(test_loader):
                         X, y = X.to(device), y.to(device)
                         preds = model(X).squeeze()
                         loss = criterion(preds, y)
@@ -240,8 +240,6 @@ def train():
                         accuracy = (preds == labels).float().mean()
                         avg_accuracy.append(accuracy)
 
-                        if j == 5:
-                            break
                     avg_loss = sum(avg_loss) / len(avg_loss)
                     avg_accuracy = sum(avg_accuracy) / len(avg_accuracy)
                     print(f"\nTrain set loss = {avg_loss}; Train set accuracy = {avg_accuracy}")
