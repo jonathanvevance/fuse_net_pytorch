@@ -205,14 +205,16 @@ model = FuseNet().to(device)
 model.apply(initialize_weights)
 criterion = nn.CrossEntropyLoss()
 # optimizer = optim.Adam(model.parameters(), lr = 0.0001) # 0.0001 (sli oscillating)
-optimizer = optim.SGD(model.parameters(), momentum = 0.9, lr = 0.0001) # 0.0001 (sli oscillating)
+optimizer = optim.SGD(model.parameters(), momentum = 0.9, lr = 0.001)
 
-print(f'SGD with lr = 0.0001')
+print(f'SGD with lr = 0.001')
+
+# Results: sgd(0.0001) works but slow
 
 def train():
 
-    for epoch in range(5):
-        print(f'\nepoch {epoch}')
+    for epoch in range(7):
+        print(f'\n\nepoch {epoch}')
         for i, (inputs, labels) in enumerate(train_loader, 0):
 
             inputs, labels = inputs.to(device), labels.to(device)
@@ -245,6 +247,6 @@ def train():
                     avg_accuracy = sum(avg_accuracy) / len(avg_accuracy)
                     print(f"\nTest loss = {avg_loss}; Test accuracy = {avg_accuracy}")
 
-    print('Finished Training')
+    print('\n\nFinished Training')
 
 train()
