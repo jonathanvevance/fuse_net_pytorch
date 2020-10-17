@@ -232,7 +232,7 @@ def train():
 
             print(f"\rloss: {loss.item()}, accuracy = {accuracy}", end = "", flush = True)
 
-            if (i % 2000 == 0):# and (i > 0):
+            if (i % 2000 == 0) and (i > 0):
                 with torch.no_grad():
                     avg_train_loss, avg_train_acc = [], []
                     for j, (input_train, y_train) in enumerate(train_loader):
