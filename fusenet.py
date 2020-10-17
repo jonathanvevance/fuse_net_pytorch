@@ -210,11 +210,11 @@ optimizer = optim.SGD(model.parameters(), momentum = 0.9, lr = 0.001)
 print(f'SGD with lr = 0.001')
 
 # Results: sgd(0.0001) works but slow
-#        : sgd(0.001)
+#        : sgd(0.001) works well (better)
 
 def train():
 
-    for epoch in range(7):
+    for epoch in range(30):
         print(f'\n\nepoch {epoch}')
         for i, (inputs, labels) in enumerate(train_loader, 0):
 
@@ -244,7 +244,7 @@ def train():
                         train_acc = (train_preds == y_train).float().mean().item()
                         avg_train_acc.append(train_acc)
 
-                        if j == 5:
+                        if j == 4:
                             break
 
                     avg_train_loss = sum(avg_train_loss) / len(avg_train_loss)
