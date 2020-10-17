@@ -322,22 +322,23 @@ def train():
                 wandb.save('latest' + str(avg_test_acc) + '.h5')
 
     print('\n\nFinished Training')
-    avg_test_loss, avg_test_acc = [], []
-    for j, (input_test, y_test) in enumerate(test_loader):
-        input_test, y_test = input_test.to(device), y_test.to(device)
-        test_preds = model(input_test).squeeze()
-        test_loss = criterion(test_preds, y_test)
-        avg_test_loss.append(test_loss.item())
-        test_preds = torch.argmax(test_preds, dim = 1)
-        test_acc = (test_preds == y_test).float().mean().item()
-        avg_test_acc.append(test_acc)
+    with torch.no_grad():
+        avg_test_loss, avg_test_acc = [], []
+        for j, (input_test, y_test) in enumerate(test_loader):
+            input_test, y_test = input_test.to(device), y_test.to(device)
+            test_preds = model(input_test).squeeze()
+            test_loss = criterion(test_preds, y_test)
+            avg_test_loss.append(test_loss.item())
+            test_preds = torch.argmax(test_preds, dim = 1)
+            test_acc = (test_preds == y_test).float().mean().item()
+            avg_test_acc.append(test_acc)
 
-    avg_test_loss = sum(avg_test_loss) / len(avg_test_loss)
-    avg_test_acc = sum(avg_test_acc) / len(avg_test_acc)
-    print(f"Final test loss = {round(avg_test_loss, 4)}; Final test accuracy = {round(avg_test_acc, 4)}\n")
-    wandb.log({
-        'final_test_acc' : avg_test_acc,
-        'final_test_loss' : avg_test_loss
-    })
+        avg_test_loss = sum(avg_test_loss) / len(avg_test_loss)
+        avg_test_acc = sum(avg_test_acc) / len(avg_test_acc)
+        print(f"Final test loss = {round(avg_test_loss, 4)}; Final test accuracy = {round(avg_test_acc, 4)}\n")
+        wandb.log({
+            'final_test_acc' : avg_test_acc,
+            'final_test_loss' : avg_test_loss
+        })
 
 train()
