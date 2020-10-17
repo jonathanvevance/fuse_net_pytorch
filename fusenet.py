@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -8,6 +7,28 @@ from torchvision.datasets import CIFAR100
 import torchvision.transforms as transforms
 print(torch.cuda.get_device_name(0))
 
+import wandb
+import argparse
+# import datetime
+
+parser = argparse.ArgumentParser()
+# parser.add_argument('name', help="Enter name")
+parser.add_argument("--epochs", help = "Enter epochs", type = int)
+parser.add_argument("--learning_rate", help = "Enter Learning Rate", type = float)
+parser.add_argument("--batch_size", help = "Enter Batch size", type = int)
+parser.add_argument("--optimizer", help = 'Enter optimizer (adam/sgd)')
+parser.add_argument("--betas_adam", help = 'Enter betas of adam (comma separated)', type = str)
+parser.add_argument("--mom_coeff", help = 'Enter coeff of momentum (float)', type = float)
+
+args = parser.parse_args()
+assert args.epochs != None
+assert args.batch_size != None
+assert args.optimizer != None
+assert args.learning_rate != None
+
+wandb.login(key = 'b567ff0e49926099eea499997b7a78c48d2bbf48')
+wandb.init(project = 'fusenet')
+
 if torch.cuda.is_available():
     device = torch.device("cuda:0") 
     print("Running on the GPU")
@@ -15,13 +36,12 @@ else:
     device = torch.device("cpu")
     print("Running on the CPU")
 
-
 H = W = 32
 
 class Hsigmoid(nn.Module):
-    def __init__(self, inplace = True):                                                                                                                                                       
+    def __init__(self, inplace = True):
         super(Hsigmoid, self).__init__()                                                                                                                                                    
-        self.inplace = inplace                                                                                                                                                              
+        self.inplace = inplace
                                                                                                                                                                                             
     def forward(self, x):                                                                                                                                                                   
         return F.relu6(x + 3., inplace = self.inplace) / 6.                                                                                                                                   
@@ -197,25 +217,39 @@ transform_test = transforms.Compose([
 train_set = CIFAR100(root = './data', train = True, download = True, transform = transform_train)
 test_set = CIFAR100(root = './data', train = False, download = True, transform = transform_test)
 
-batch_size = 8
-train_loader = DataLoader(train_set, batch_size = batch_size, shuffle = True, num_workers = 2)
-test_loader = DataLoader(test_set, batch_size = len(test_set.data), shuffle = False, num_workers = 2)
+train_loader = DataLoader(train_set, batch_size = args.batch_size, shuffle = True, num_workers = 2)
+test_loader = DataLoader(test_set, batch_size = args.batch_size, shuffle = False, num_workers = 2)
+
+# parsing cmd line args
+if args.optimizer == 'adam':
+    if args.betas_adam != None:
+        beta1, beta2 = list(map(float, args.betas_adam.split(',')))
+        optimizer = optim.Adam(model.parameters(), lr = args.learning_rate, betas = (beta1, beta2))
+    else:
+        optimizer = optim.Adam(model.parameters(), lr = args.learning_rate)
+
+elif args.optimizer == 'sgd':
+    if args.mom_coeff != None:
+        optimizer = optim.SGD(params, lr = args.learning_rate, momentum = args.mom_coeff, nesterov=True)
+    else:
+        optimizer = optim.SGD(params, lr = args.learning_rate, momentum = 0.9, nesterov = True)
 
 model = FuseNet().to(device)
 model.apply(initialize_weights)
 criterion = nn.CrossEntropyLoss()
-# optimizer = optim.Adam(model.parameters(), lr = 0.0001) # 0.0001 (sli oscillating)
-optimizer = optim.SGD(model.parameters(), momentum = 0.9, lr = 0.001)
-
-print(f'SGD with lr = 0.001')
 
 # Results: sgd(0.0001) works but slow
 #        : sgd(0.001) works well (better)
 
+wandb.watch(model, log = 'all')
+
 def train():
 
-    for epoch in range(30):
-        print(f'\n\nepoch {epoch}')
+    running_train_acc = 0.0
+    running_train_loss = 0.0
+
+    for epoch in range(args.epochs):
+        print(f'\nepoch {epoch}')
         for i, (inputs, labels) in enumerate(train_loader, 0):
 
             inputs, labels = inputs.to(device), labels.to(device)
@@ -229,41 +263,58 @@ def train():
             output = model(inputs).squeeze()
             preds = torch.argmax(output, dim = 1)
             accuracy = (preds == labels).float().mean()
+            running_train_acc += accuracy
+            running_train_loss += loss.item()
 
-            print(f"\rloss: {loss.item()}, accuracy = {accuracy}", end = "", flush = True)
+            print(f"\rloss: {round(loss.item(), 4)}, accuracy = {round(accuracy, 4)}", end = "", flush = True)
 
-            if (i % 2000 == 0) and (i > 0):
-                with torch.no_grad():
-                    avg_train_loss, avg_train_acc = [], []
-                    for j, (input_train, y_train) in enumerate(train_loader):
-                        input_train, y_train = input_train.to(device), y_train.to(device)
-                        train_preds = model(input_train).squeeze()
-                        train_loss = criterion(train_preds, y_train)
-                        avg_train_loss.append(train_loss.item())
-                        train_preds = torch.argmax(train_preds, dim = 1)
-                        train_acc = (train_preds == y_train).float().mean().item()
-                        avg_train_acc.append(train_acc)
+            if (i % 2000 == 1999) and (i > 0):
 
-                        if j == 4:
-                            break
+                wandb.log({
+                    "running_acc_2000" : running_acc / 2000,
+                    "running_loss_2000" : running_loss/2000
+                })
 
-                    avg_train_loss = sum(avg_train_loss) / len(avg_train_loss)
-                    avg_train_acc = sum(avg_train_acc) / len(avg_train_acc)
-                    print(f"\nTrain loss = {round(avg_train_loss, 4)}; Train accuracy = {round(avg_train_acc, 4)} (on 5*{batch_size} imgs)")
+                running_train_acc = running_train_loss = 0
 
-                    avg_test_loss, avg_test_acc = [], []
-                    for j, (input_test, y_test) in enumerate(test_loader):
-                        input_test, y_test = input_test.to(device), y_test.to(device)
-                        test_preds = model(input_test).squeeze()
-                        test_loss = criterion(test_preds, y_test)
-                        avg_test_loss.append(test_loss.item())
-                        test_preds = torch.argmax(test_preds, dim = 1)
-                        test_acc = (test_preds == y_test).float().mean().item()
-                        avg_test_acc.append(test_acc)
+        with torch.no_grad():
+            avg_train_loss, avg_train_acc = [], []
+            for j, (input_train, y_train) in enumerate(train_loader):
+                input_train, y_train = input_train.to(device), y_train.to(device)
+                train_preds = model(input_train).squeeze()
+                train_loss = criterion(train_preds, y_train)
+                avg_train_loss.append(train_loss.item())
+                train_preds = torch.argmax(train_preds, dim = 1)
+                train_acc = (train_preds == y_train).float().mean().item()
+                avg_train_acc.append(train_acc)
 
-                    avg_test_loss = sum(avg_test_loss) / len(avg_test_loss)
-                    avg_test_acc = sum(avg_test_acc) / len(avg_test_acc)
-                    print(f"Test loss = {round(avg_test_loss, 4)}; Test accuracy = {round(avg_test_acc, 4)}\n")
+                if j == 14:
+                    break
+
+            avg_train_loss = sum(avg_train_loss) / len(avg_train_loss)
+            avg_train_acc = sum(avg_train_acc) / len(avg_train_acc)
+            print(f"\nTrain loss = {round(avg_train_loss, 4)}; Train accuracy = {round(avg_train_acc, 4)} (on {15*args.batch_size} imgs)")
+
+            avg_test_loss, avg_test_acc = [], []
+            for j, (input_test, y_test) in enumerate(test_loader):
+                input_test, y_test = input_test.to(device), y_test.to(device)
+                test_preds = model(input_test).squeeze()
+                test_loss = criterion(test_preds, y_test)
+                avg_test_loss.append(test_loss.item())
+                test_preds = torch.argmax(test_preds, dim = 1)
+                test_acc = (test_preds == y_test).float().mean().item()
+                avg_test_acc.append(test_acc)
+
+            avg_test_loss = sum(avg_test_loss) / len(avg_test_loss)
+            avg_test_acc = sum(avg_test_acc) / len(avg_test_acc)
+            print(f"Test loss = {round(avg_test_loss, 4)}; Test accuracy = {round(avg_test_acc, 4)}\n")
+
+            wandb.log({
+                "test_acc": avg_test_acc,
+                "test_loss": avg_test_loss,
+                "train_acc_mini": avg_train_acc,
+                "train_loss_mini": avg_train_loss
+            })
 
     print('\n\nFinished Training')
 
