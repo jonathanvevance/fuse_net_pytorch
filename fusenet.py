@@ -218,6 +218,10 @@ test_set = CIFAR100(root = './data', train = False, download = True, transform =
 train_loader = DataLoader(train_set, batch_size = args.batch_size, shuffle = True, num_workers = 2)
 test_loader = DataLoader(test_set, batch_size = args.batch_size, shuffle = False, num_workers = 2)
 
+model = FuseNet().to(device)
+model.apply(initialize_weights)
+criterion = nn.CrossEntropyLoss()
+
 # parsing cmd line args
 if args.optimizer == 'adam':
     if args.betas_adam != None:
@@ -231,10 +235,6 @@ elif args.optimizer == 'sgd':
         optimizer = optim.SGD(model.params(), lr = args.learning_rate, momentum = args.mom_coeff, nesterov=True)
     else:
         optimizer = optim.SGD(model.params(), lr = args.learning_rate, momentum = 0.9, nesterov = True)
-
-model = FuseNet().to(device)
-model.apply(initialize_weights)
-criterion = nn.CrossEntropyLoss()
 
 # Results: sgd(0.0001) works but slow
 #        : sgd(0.001) works well (better)
