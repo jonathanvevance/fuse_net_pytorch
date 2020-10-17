@@ -17,7 +17,7 @@ parser.add_argument("--batch_size", help = "Enter Batch size", type = int)
 parser.add_argument("--optimizer", help = 'Enter optimizer (adam/sgd/rmsprop)')
 parser.add_argument("--betas_adam", help = 'Enter betas of adam (comma separated)', type = str)
 parser.add_argument("--mom_coeff", help = 'Enter coeff of momentum (float)', type = float)
-parser.add_argument("--apha_rmsprop", help = 'Enter alpha of rmsprop (float)', type = float)
+parser.add_argument("--alpha_rmsprop", help = 'Enter alpha of rmsprop (float)', type = float)
 
 args = parser.parse_args()
 assert args.epochs != None
