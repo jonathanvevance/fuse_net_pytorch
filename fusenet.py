@@ -14,9 +14,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--epochs", help = "Enter epochs", type = int)
 parser.add_argument("--learning_rate", help = "Enter Learning Rate", type = float)
 parser.add_argument("--batch_size", help = "Enter Batch size", type = int)
-parser.add_argument("--optimizer", help = 'Enter optimizer (adam/sgd)')
+parser.add_argument("--optimizer", help = 'Enter optimizer (adam/sgd/rmsprop)')
 parser.add_argument("--betas_adam", help = 'Enter betas of adam (comma separated)', type = str)
 parser.add_argument("--mom_coeff", help = 'Enter coeff of momentum (float)', type = float)
+parser.add_argument("--apha_rmsprop", help = 'Enter alpha of rmsprop (float)', type = float)
 
 args = parser.parse_args()
 assert args.epochs != None
@@ -236,8 +237,11 @@ elif args.optimizer == 'sgd':
     else:
         optimizer = optim.SGD(model.parameters(), lr = args.learning_rate, momentum = 0.9, nesterov = True)
 
-# Results: sgd(0.0001) works but slow
-#        : sgd(0.001) works well (better)
+elif args.optimizer == 'rmsprop':
+    if args.alpha_rmsprop != None:
+        optimizer = optim.RMSprop(model.parameters(), lr = args.learning_rate, alpha = args.alpha_rmsprop)
+    else:
+        optimizer = optim.RMSprop(model.parameters(), lr = args.learning_rate)
 
 wandb.watch(model, log = 'all')
 
