@@ -265,7 +265,7 @@ def train():
             running_train_acc += accuracy
             running_train_loss += loss.item()
 
-            print(f"\rloss: {round(loss.item(), 4)}, accuracy = {round(accuracy, 4)}", end = "", flush = True)
+            print(f"\rloss: {loss.item()}, accuracy = {accuracy}", end = "", flush = True)
 
             if (i % 2000 == 1999) and (i > 0):
 
