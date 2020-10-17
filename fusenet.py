@@ -228,9 +228,9 @@ if args.optimizer == 'adam':
 
 elif args.optimizer == 'sgd':
     if args.mom_coeff != None:
-        optimizer = optim.SGD(params, lr = args.learning_rate, momentum = args.mom_coeff, nesterov=True)
+        optimizer = optim.SGD(model.params(), lr = args.learning_rate, momentum = args.mom_coeff, nesterov=True)
     else:
-        optimizer = optim.SGD(params, lr = args.learning_rate, momentum = 0.9, nesterov = True)
+        optimizer = optim.SGD(model.params(), lr = args.learning_rate, momentum = 0.9, nesterov = True)
 
 model = FuseNet().to(device)
 model.apply(initialize_weights)
