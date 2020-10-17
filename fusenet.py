@@ -9,10 +9,8 @@ print(torch.cuda.get_device_name(0))
 
 import wandb
 import argparse
-# import datetime
 
 parser = argparse.ArgumentParser()
-# parser.add_argument('name', help="Enter name")
 parser.add_argument("--epochs", help = "Enter epochs", type = int)
 parser.add_argument("--learning_rate", help = "Enter Learning Rate", type = float)
 parser.add_argument("--batch_size", help = "Enter Batch size", type = int)
@@ -245,6 +243,7 @@ wandb.watch(model, log = 'all')
 
 def train():
 
+    best_test_acc = 0.0
     running_train_acc = 0.0
     running_train_loss = 0.0
 
@@ -316,6 +315,29 @@ def train():
                 "train_loss_mini": avg_train_loss
             })
 
+            if avg_test_acc > best_test_acc:
+                wandb.save('best' + str(avg_test__acc) + '.h5')
+                best_test_acc = avg_test_acc
+            else:
+                wandb.save('latest' + str(avg_test_acc) + '.h5')
+
     print('\n\nFinished Training')
+    avg_test_loss, avg_test_acc = [], []
+    for j, (input_test, y_test) in enumerate(test_loader):
+        input_test, y_test = input_test.to(device), y_test.to(device)
+        test_preds = model(input_test).squeeze()
+        test_loss = criterion(test_preds, y_test)
+        avg_test_loss.append(test_loss.item())
+        test_preds = torch.argmax(test_preds, dim = 1)
+        test_acc = (test_preds == y_test).float().mean().item()
+        avg_test_acc.append(test_acc)
+
+    avg_test_loss = sum(avg_test_loss) / len(avg_test_loss)
+    avg_test_acc = sum(avg_test_acc) / len(avg_test_acc)
+    print(f"Final test loss = {round(avg_test_loss, 4)}; Final test accuracy = {round(avg_test_acc, 4)}\n")
+    wandb.log({
+        'final_test_acc' : avg_test_acc,
+        'final_test_loss' : avg_test_loss
+    })
 
 train()
