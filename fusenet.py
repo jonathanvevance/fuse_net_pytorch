@@ -316,7 +316,7 @@ def train():
             })
 
             if avg_test_acc > best_test_acc:
-                wandb.save('best' + str(avg_test__acc) + '.h5')
+                wandb.save('best' + str(avg_test_acc) + '.h5')
                 best_test_acc = avg_test_acc
             else:
                 wandb.save('latest' + str(avg_test_acc) + '.h5')
