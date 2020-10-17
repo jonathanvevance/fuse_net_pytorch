@@ -249,7 +249,7 @@ def train():
 
                     avg_train_loss = sum(avg_train_loss) / len(avg_train_loss)
                     avg_train_acc = sum(avg_train_acc) / len(avg_train_acc)
-                    print(f"\nTrain loss = {round(avg_train_loss, 4)}; Train accuracy = {round(avg_train_acc, 4)} (on 5*{batch_size} imgs")
+                    print(f"\nTrain loss = {round(avg_train_loss, 4)}; Train accuracy = {round(avg_train_acc, 4)} (on 5*{batch_size} imgs)")
 
                     avg_test_loss, avg_test_acc = [], []
                     for j, (input_test, y_test) in enumerate(test_loader):
@@ -263,7 +263,7 @@ def train():
 
                     avg_test_loss = sum(avg_test_loss) / len(avg_test_loss)
                     avg_test_acc = sum(avg_test_acc) / len(avg_test_acc)
-                    print(f"\nTest loss = {round(avg_test_loss, 4)}; Test accuracy = {round(avg_test_acc, 4)}\n")
+                    print(f"Test loss = {round(avg_test_loss, 4)}; Test accuracy = {round(avg_test_acc, 4)}\n")
 
     print('\n\nFinished Training')
 
