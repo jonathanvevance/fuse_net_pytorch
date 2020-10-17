@@ -232,7 +232,7 @@ def train():
 
             print(f"\rloss: {loss.item()}, accuracy = {accuracy}", end = "", flush = True)
 
-            if (i % 2000 == 0) and (i > 0):
+            if (i % 2000 == 0):# and (i > 0):
                 with torch.no_grad():
                     avg_train_loss, avg_train_acc = [], []
                     for j, (input_train, y_train) in enumerate(train_loader):
@@ -241,7 +241,7 @@ def train():
                         train_loss = criterion(train_preds, y_train)
                         avg_train_loss.append(train_loss.item())
                         train_preds = torch.argmax(train_preds, dim = 1)
-                        train_acc = (train_preds == y_train).float().mean()
+                        train_acc = (train_preds == y_train).float().mean().item()
                         avg_train_acc.append(train_acc)
 
                         if j == 5:
@@ -258,7 +258,7 @@ def train():
                         test_loss = criterion(test_preds, y_test)
                         avg_test_loss.append(test_loss.item())
                         test_preds = torch.argmax(test_preds, dim = 1)
-                        test_acc = (test_preds == y_test).float().mean()
+                        test_acc = (test_preds == y_test).float().mean().item()
                         avg_test_acc.append(test_acc)
 
                     avg_test_loss = sum(avg_test_loss) / len(avg_test_loss)
