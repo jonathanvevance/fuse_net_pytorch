@@ -210,6 +210,7 @@ optimizer = optim.SGD(model.parameters(), momentum = 0.9, lr = 0.001)
 print(f'SGD with lr = 0.001')
 
 # Results: sgd(0.0001) works but slow
+#        : sgd(0.001)
 
 def train():
 
@@ -233,19 +234,36 @@ def train():
 
             if (i % 2000 == 0) and (i > 0):
                 with torch.no_grad():
-                    avg_loss, avg_accuracy = [], []
+                    avg_train_loss, avg_train_acc = [], []
+                    for j, (input_train, y_train) in enumerate(train_loader):
+                        input_train, y_train = input_train.to(device), y_train.to(device)
+                        train_preds = model(input_train).squeeze()
+                        train_loss = criterion(train_preds, y_train)
+                        avg_train_loss.append(train_loss.item())
+                        train_preds = torch.argmax(train_preds, dim = 1)
+                        train_acc = (train_preds == y_train).float().mean()
+                        avg_train_acc.append(train_acc)
+
+                        if j == 5:
+                            break
+
+                    avg_train_loss = sum(avg_train_loss) / len(avg_train_loss)
+                    avg_train_acc = sum(avg_train_acc) / len(avg_train_acc)
+                    print(f"\nTrain loss = {round(avg_train_loss, 4)}; Train accuracy = {round(avg_train_acc, 4)} (on 5*{batch_size} imgs")
+
+                    avg_test_loss, avg_test_acc = [], []
                     for j, (input_test, y_test) in enumerate(test_loader):
                         input_test, y_test = input_test.to(device), y_test.to(device)
                         test_preds = model(input_test).squeeze()
                         test_loss = criterion(test_preds, y_test)
-                        avg_loss.append(test_loss.item())
+                        avg_test_loss.append(test_loss.item())
                         test_preds = torch.argmax(test_preds, dim = 1)
                         test_acc = (test_preds == y_test).float().mean()
-                        avg_accuracy.append(test_acc)
+                        avg_test_acc.append(test_acc)
 
-                    avg_loss = sum(avg_loss) / len(avg_loss)
-                    avg_accuracy = sum(avg_accuracy) / len(avg_accuracy)
-                    print(f"\nTest loss = {avg_loss}; Test accuracy = {avg_accuracy}")
+                    avg_test_loss = sum(avg_test_loss) / len(avg_test_loss)
+                    avg_test_acc = sum(avg_test_acc) / len(avg_test_acc)
+                    print(f"\nTest loss = {round(avg_test_loss, 4)}; Test accuracy = {round(avg_test_acc, 4)}\n")
 
     print('\n\nFinished Training')
 
