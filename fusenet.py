@@ -18,7 +18,8 @@ parser.add_argument("--optimizer", help = 'Enter optimizer (adam/sgd/rmsprop)')
 parser.add_argument("--betas_adam", help = 'Enter betas of adam (comma separated)', type = str)
 parser.add_argument("--mom_coeff", help = 'Enter coeff of momentum (float)', type = float)
 parser.add_argument("--alpha_rmsprop", help = 'Enter alpha of rmsprop (float)', type = float)
-parser.add_argument("--scheduler", help = 'Enter True/False', type = bool)
+parser.add_argument("--scheduler", help = 'Enter True/False for using lr scheduler', type = bool)
+parser.add_argument("--weight_decay", help = 'Enter weight decay coeff', type = float)
 
 args = parser.parse_args()
 assert args.epochs != None
@@ -228,21 +229,46 @@ criterion = nn.CrossEntropyLoss()
 if args.optimizer == 'adam':
     if args.betas_adam != None:
         beta1, beta2 = list(map(float, args.betas_adam.split(',')))
-        optimizer = optim.Adam(model.parameters(), lr = args.learning_rate, betas = (beta1, beta2))
     else:
-        optimizer = optim.Adam(model.parameters(), lr = args.learning_rate)
+        beta1, beta2 = 0.9, 0.999
+
+    if args.weight_decay != None:
+        weight_decay = args.weight_decay
+
+    optimizer = optim.Adam(
+        model.parameters(), lr = args.learning_rate, betas = (beta1, beta2), weight_decay = weight_decay
+    )
 
 elif args.optimizer == 'sgd':
     if args.mom_coeff != None:
-        optimizer = optim.SGD(model.parameters(), lr = args.learning_rate, momentum = args.mom_coeff, nesterov=True)
+        momentum = args.mom_coeff
     else:
-        optimizer = optim.SGD(model.parameters(), lr = args.learning_rate, momentum = 0.9, nesterov = True)
+        momentum = 0.9
+
+    if args.weight_decay != None:
+        weight_decay = args.weight_decay
+    else:
+        weight_decay = 0
+
+    optimizer = optim.SGD(
+        model.parameters(), lr = args.learning_rate, momentum = momentum, weight_decay = weight_decay, nesterov = True
+    )
 
 elif args.optimizer == 'rmsprop':
     if args.alpha_rmsprop != None:
-        optimizer = optim.RMSprop(model.parameters(), lr = args.learning_rate, alpha = args.alpha_rmsprop)
+        alpha = args.alpha_rmsprop
     else:
-        optimizer = optim.RMSprop(model.parameters(), lr = args.learning_rate)
+        alpha = 0.99
+
+    if args.weight_decay != None:
+        weight_decay = args.weight_decay
+    else:
+        weight_decay = 0
+
+    optimizer = optim.RMSprop(
+        model.parameters(), lr = args.learning_rate, alpha = alpha, weight_decay = weight_decay
+    )
+
 
 scheduler = None
 if args.scheduler != None:
