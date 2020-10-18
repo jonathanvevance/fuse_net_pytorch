@@ -244,8 +244,9 @@ elif args.optimizer == 'rmsprop':
     else:
         optimizer = optim.RMSprop(model.parameters(), lr = args.learning_rate)
 
+scheduler = None
 if args.scheduler_steps != None:
-    optimizer = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.scheduler_steps)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.scheduler_steps)
 
 wandb.watch(model, log = 'all')
 
@@ -266,6 +267,7 @@ def train():
 
             loss.backward()
             optimizer.step()
+            scheduler.step()
 
             output = model(inputs).squeeze()
             preds = torch.argmax(output, dim = 1)
