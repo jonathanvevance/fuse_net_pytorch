@@ -18,6 +18,7 @@ parser.add_argument("--optimizer", help = 'Enter optimizer (adam/sgd/rmsprop)')
 parser.add_argument("--betas_adam", help = 'Enter betas of adam (comma separated)', type = str)
 parser.add_argument("--mom_coeff", help = 'Enter coeff of momentum (float)', type = float)
 parser.add_argument("--alpha_rmsprop", help = 'Enter alpha of rmsprop (float)', type = float)
+parser.add_argument("--scheduler_steps", help = 'Enter T_max of cosine annealing', type = int)
 
 args = parser.parse_args()
 assert args.epochs != None
@@ -242,6 +243,9 @@ elif args.optimizer == 'rmsprop':
         optimizer = optim.RMSprop(model.parameters(), lr = args.learning_rate, alpha = args.alpha_rmsprop)
     else:
         optimizer = optim.RMSprop(model.parameters(), lr = args.learning_rate)
+
+if args.scheduler_steps != None:
+    optimizer = optim.lr_scheduler.CosineAnnealing(optimizer, args.scheduler_steps)
 
 wandb.watch(model, log = 'all')
 
