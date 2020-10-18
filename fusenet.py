@@ -18,7 +18,7 @@ parser.add_argument("--optimizer", help = 'Enter optimizer (adam/sgd/rmsprop)')
 parser.add_argument("--betas_adam", help = 'Enter betas of adam (comma separated)', type = str)
 parser.add_argument("--mom_coeff", help = 'Enter coeff of momentum (float)', type = float)
 parser.add_argument("--alpha_rmsprop", help = 'Enter alpha of rmsprop (float)', type = float)
-parser.add_argument("--scheduler_steps", help = 'Enter T_max of cosine annealing', type = int)
+parser.add_argument("--scheduler", help = 'Enter True/False', type = bool)
 
 args = parser.parse_args()
 assert args.epochs != None
@@ -246,7 +246,7 @@ elif args.optimizer == 'rmsprop':
 
 scheduler = None
 if args.scheduler_steps != None:
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.scheduler_steps)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs * len(train_loader))
 
 wandb.watch(model, log = 'all')
 
@@ -268,9 +268,6 @@ def train():
             loss.backward()
             optimizer.step()
 
-            if scheduler != None:
-                scheduler.step()
-
             output = model(inputs).squeeze()
             preds = torch.argmax(output, dim = 1)
             accuracy = (preds == labels).float().mean()
@@ -287,6 +284,9 @@ def train():
                 })
 
                 running_train_acc = running_train_loss = 0
+
+            if scheduler != None:
+                scheduler.step()
 
         with torch.no_grad():
             avg_train_loss, avg_train_acc = [], []
