@@ -106,13 +106,12 @@ class FuseBlock(nn.Module):
     def forward(self, x):
 
         x = self.activ_func(self.batch_norm_11(self.conv_11(x)))
-        left = self.batch_norm_1k(self.conv_dw_1k(x))  ## try same batch norm
-        right = self.batch_norm_k1(self.conv_dw_k1(x)) ## try same batch norm
+        left = self.batch_norm_1k(self.conv_dw_1k(x))
+        right = self.batch_norm_k1(self.conv_dw_k1(x))
         x = torch.cat([left, right], 1)
 
         if self.is_SE:
-            # x = self.HSLayer(self.SEBlock(x))
-            x = self.SEBlock(x) # ask TA
+            x = self.SEBlock(x)
 
         x = self.activ_func(x)
         x = self.batch_norm_11_final(self.conv_11_final(x))
@@ -276,8 +275,8 @@ if args.scheduler != None:
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs * len(train_loader))
     elif args.scheduler == 'cosannealrest':
         scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, args.epochs * len(train_loader))
-    else:
-        scheduler = None ###
+    elif args.scheduler == 'plateau':
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
 
 wandb.watch(model, log = 'all')
 
@@ -317,7 +316,8 @@ def train():
                 running_train_acc = running_train_loss = 0
 
             if scheduler != None:
-                scheduler.step()
+                if args.scheduler != 'plateau':
+        	        scheduler.step()
 
         with torch.no_grad():
             avg_train_loss, avg_train_acc = [], []
