@@ -18,7 +18,7 @@ parser.add_argument("--optimizer", help = 'Enter optimizer (adam/sgd/rmsprop)')
 parser.add_argument("--betas_adam", help = 'Enter betas of adam (comma separated)', type = str)
 parser.add_argument("--mom_coeff", help = 'Enter coeff of momentum (float)', type = float)
 parser.add_argument("--alpha_rmsprop", help = 'Enter alpha of rmsprop (float)', type = float)
-parser.add_argument("--scheduler", help = 'Enter True/False for using lr scheduler', type = bool)
+parser.add_argument("--scheduler", help = 'Enter lr scheduler (cosanneal/plateau/cosannelrest)', type = str)
 parser.add_argument("--weight_decay", help = 'Enter weight decay coeff', type = float)
 
 args = parser.parse_args()
@@ -41,65 +41,65 @@ H = W = 32
 
 class Hsigmoid(nn.Module):
     def __init__(self, inplace = True):
-        super(Hsigmoid, self).__init__()                                                                                                                                                    
+        super(Hsigmoid, self).__init__()
         self.inplace = inplace
-                                                                                                                                                                                            
-    def forward(self, x):                                                                                                                                                                   
-        return F.relu6(x + 3., inplace = self.inplace) / 6.                                                                                                                                   
+
+    def forward(self, x):
+        return F.relu6(x + 3., inplace = self.inplace) / 6.
 
 class SEModule(nn.Module):
-    def __init__(self, channel, reduction = 4):                                                                                                                                               
-        super(SEModule, self).__init__()                                                                                                                                                    
+    def __init__(self, channel, reduction = 4):
+        super(SEModule, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)                                                                                                                                             
-        self.fc = nn.Sequential(                                                                                                                                                            
-            nn.Linear(channel, channel // reduction, bias = False),                                                                                                                           
-            nn.ReLU(inplace = True),                                                                                                                                                          
-            nn.Linear(channel // reduction, channel, bias = False),                                                                                                                           
-            Hsigmoid()                                                                                                                                                                      
-        )                                                                                                                                                                                   
-                                                                                                                                                                                             
-    def forward(self, x):                                                                                                                                                                   
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction, bias = False),
+            nn.ReLU(inplace = True),
+            nn.Linear(channel // reduction, channel, bias = False),
+            Hsigmoid()
+        )
+
+    def forward(self, x):
         b, c, _, _ = x.size()                                                                                                                                                               
-        y = self.avg_pool(x).view(b, c)                                                                                                                                                     
+        y = self.avg_pool(x).view(b, c)
         y = self.fc(y).view(b, c, 1, 1)                                                                                                                                                     
-        return x * y.expand_as(x)  
+        return x * y.expand_as(x)
 
 class Hswish(nn.Module):
-    def __init__(self, inplace = True):                                                                                                                                                       
+    def __init__(self, inplace = True):
         super(Hswish, self).__init__()                                                                                                                                                      
-        self.inplace = inplace                                                                                                                                                              
+        self.inplace = inplace
                                                                                                                                                                                             
-    def forward(self, x):                                                                                                                                                                   
+    def forward(self, x):
         return x * F.relu6(x + 3., inplace = self.inplace) / 6.
 
 class FuseBlock(nn.Module):
     def __init__(self, inC, exp, K, stride, oup, is_SE, activ_func):
-        
+
         super(FuseBlock, self).__init__()
         self.is_SE = is_SE
         self.activ_func = activ_func
         pad = (K - 1) // 2
-        
+
         self.conv_11 = nn.Conv2d(
             in_channels = inC, out_channels = exp, kernel_size = 1, bias = False) 
         self.batch_norm_11 = nn.BatchNorm2d(num_features = exp)
 
         self.conv_dw_1k = nn.Conv2d(
-            in_channels = exp, out_channels = exp, kernel_size = (1, K), 
+            in_channels = exp, out_channels = exp, kernel_size = (1, K),
             groups = exp, stride = stride, padding = (0, pad), bias = False)
-        self.batch_norm_1k = nn.BatchNorm2d(num_features = exp) 
+        self.batch_norm_1k = nn.BatchNorm2d(num_features = exp)
 
         self.conv_dw_k1 = nn.Conv2d(
-            in_channels = exp, out_channels = exp, kernel_size = (K, 1), 
+            in_channels = exp, out_channels = exp, kernel_size = (K, 1),
             groups = exp, stride = stride, padding = (pad, 0), bias = False)
         self.batch_norm_k1 = nn.BatchNorm2d(num_features = exp)
 
         if self.is_SE:
             self.SEBlock = SEModule(2 * exp)
-            self.HSLayer = Hsigmoid() 
+            self.HSLayer = Hsigmoid()
 
         self.conv_11_final = nn.Conv2d(
-            in_channels = 2 * exp, out_channels = oup, kernel_size = 1, bias = False)  
+            in_channels = 2 * exp, out_channels = oup, kernel_size = 1, bias = False)
         self.batch_norm_11_final = nn.BatchNorm2d(num_features = oup)
 
 
@@ -149,7 +149,7 @@ class FuseNet(nn.Module):
 
         self.fuse_8 = FuseBlock(
             inC = 40, exp = 120, K = 5, stride = 1, oup = 48, is_SE = True, activ_func = Hswish())
-    
+
         self.fuse_9 = FuseBlock(
             inC = 48, exp = 144, K = 5, stride = 1, oup = 48, is_SE = True, activ_func = Hswish())
 
@@ -174,10 +174,10 @@ class FuseNet(nn.Module):
         self.dropout = nn.Dropout(p = 0.2)
 
         self.conv_4 = nn.Conv2d(
-            in_channels = 1024, out_channels = 100, kernel_size = 1, bias = False)    
+            in_channels = 1024, out_channels = 100, kernel_size = 1, bias = False)
 
         self.layers = nn.Sequential(
-            self.conv_1, self.batch_norm_1c, self.fuse_2, self.fuse_3, self.fuse_4, 
+            self.conv_1, self.batch_norm_1c, self.fuse_2, self.fuse_3, self.fuse_4,
             self.fuse_5, self.fuse_6, self.fuse_7, self.fuse_8, self.fuse_9, self.fuse_10, 
             self.fuse_11, self.fuse_12, self.conv_2, self.batch_norm_2c, Hswish(), 
             self.avg_pooling, self.conv_3, Hswish(), self.dropout, self.conv_4
@@ -272,7 +272,12 @@ elif args.optimizer == 'rmsprop':
 
 scheduler = None
 if args.scheduler != None:
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs * len(train_loader))
+    if args.scheduler == 'cosanneal':
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs * len(train_loader))
+    elif args.scheduler == 'cosanneal':
+        scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, args.epochs * len(train_loader))
+    else:
+        scheduler = None ###
 
 wandb.watch(model, log = 'all')
 
