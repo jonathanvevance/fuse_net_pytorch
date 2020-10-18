@@ -276,7 +276,7 @@ if args.scheduler != None:
     elif args.scheduler == 'cosannealrest':
         scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, args.epochs * len(train_loader))
     elif args.scheduler == 'plateau':
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', type = float)
 
 wandb.watch(model, log = 'all')
 
@@ -363,6 +363,10 @@ def train():
                 best_test_acc = avg_test_acc
             else:
                 wandb.save('latest' + str(avg_test_acc) + '.h5')
+
+            if scheduler != None:
+                if args.scheduler == 'plateau':
+                    scheduler.step(avg_test_loss)
 
     print('\n\nFinished Training')
     with torch.no_grad():
