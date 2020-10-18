@@ -245,7 +245,7 @@ elif args.optimizer == 'rmsprop':
         optimizer = optim.RMSprop(model.parameters(), lr = args.learning_rate)
 
 if args.scheduler_steps != None:
-    optimizer = optim.lr_scheduler.CosineAnnealing(optimizer, args.scheduler_steps)
+    optimizer = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.scheduler_steps)
 
 wandb.watch(model, log = 'all')
 
