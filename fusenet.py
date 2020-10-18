@@ -274,7 +274,7 @@ scheduler = None
 if args.scheduler != None:
     if args.scheduler == 'cosanneal':
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs * len(train_loader))
-    elif args.scheduler == 'cosanneal':
+    elif args.scheduler == 'cosannealrest':
         scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, args.epochs * len(train_loader))
     else:
         scheduler = None ###
