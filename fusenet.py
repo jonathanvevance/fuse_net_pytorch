@@ -267,7 +267,9 @@ def train():
 
             loss.backward()
             optimizer.step()
-            scheduler.step()
+
+            if scheduler != None:
+                scheduler.step()
 
             output = model(inputs).squeeze()
             preds = torch.argmax(output, dim = 1)
