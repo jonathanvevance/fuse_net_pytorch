@@ -7,7 +7,6 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, IterableDataset
 from torchvision.datasets import CIFAR100
 import torchvision.transforms as transforms
-print(torch.cuda.get_device_name(0))
 
 H = W = 32
 
