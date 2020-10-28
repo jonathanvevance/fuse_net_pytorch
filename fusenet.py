@@ -1,4 +1,6 @@
 import torch
+import wandb
+import argparse
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -6,36 +8,6 @@ from torch.utils.data import DataLoader, IterableDataset
 from torchvision.datasets import CIFAR100
 import torchvision.transforms as transforms
 print(torch.cuda.get_device_name(0))
-
-import wandb
-import argparse
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--epochs", help = "Enter epochs", type = int)
-parser.add_argument("--learning_rate", help = "Enter Learning Rate", type = float)
-parser.add_argument("--batch_size", help = "Enter Batch size", type = int)
-parser.add_argument("--optimizer", help = 'Enter optimizer (adam/sgd/rmsprop)')
-parser.add_argument("--betas_adam", help = 'Enter betas of adam (comma separated)', type = str)
-parser.add_argument("--mom_coeff", help = 'Enter coeff of momentum (float)', type = float)
-parser.add_argument("--alpha_rmsprop", help = 'Enter alpha of rmsprop (float)', type = float)
-parser.add_argument("--scheduler", help = 'Enter lr scheduler (cosanneal/plateau/cosannelrest)', type = str)
-parser.add_argument("--weight_decay", help = 'Enter weight decay coeff', type = float)
-
-args = parser.parse_args()
-assert args.epochs != None
-assert args.batch_size != None
-assert args.optimizer != None
-assert args.learning_rate != None
-
-wandb.login(key = 'b567ff0e49926099eea499997b7a78c48d2bbf48')
-wandb.init(project = 'fusenet')
-
-if torch.cuda.is_available():
-    device = torch.device("cuda:0") 
-    print("Running on the GPU")
-else:
-    device = torch.device("cpu")
-    print("Running on the CPU")
 
 H = W = 32
 
@@ -214,73 +186,8 @@ transform_test = transforms.Compose([
                     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),                                                                                           
 ])
 
-train_set = CIFAR100(root = './data', train = True, download = True, transform = transform_train)
-test_set = CIFAR100(root = './data', train = False, download = True, transform = transform_test)
 
-train_loader = DataLoader(train_set, batch_size = args.batch_size, shuffle = True, num_workers = 2)
-test_loader = DataLoader(test_set, batch_size = args.batch_size, shuffle = False, num_workers = 2)
-
-model = FuseNet().to(device)
-model.apply(initialize_weights)
-criterion = nn.CrossEntropyLoss()
-
-# parsing cmd line args
-if args.optimizer == 'adam':
-    if args.betas_adam != None:
-        beta1, beta2 = list(map(float, args.betas_adam.split(',')))
-    else:
-        beta1, beta2 = 0.9, 0.999
-
-    if args.weight_decay != None:
-        weight_decay = args.weight_decay
-
-    optimizer = optim.Adam(
-        model.parameters(), lr = args.learning_rate, betas = (beta1, beta2), weight_decay = weight_decay
-    )
-
-elif args.optimizer == 'sgd':
-    if args.mom_coeff != None:
-        momentum = args.mom_coeff
-    else:
-        momentum = 0.9
-
-    if args.weight_decay != None:
-        weight_decay = args.weight_decay
-    else:
-        weight_decay = 0
-
-    optimizer = optim.SGD(
-        model.parameters(), lr = args.learning_rate, momentum = momentum, weight_decay = weight_decay, nesterov = True
-    )
-
-elif args.optimizer == 'rmsprop':
-    if args.alpha_rmsprop != None:
-        alpha = args.alpha_rmsprop
-    else:
-        alpha = 0.99
-
-    if args.weight_decay != None:
-        weight_decay = args.weight_decay
-    else:
-        weight_decay = 0
-
-    optimizer = optim.RMSprop(
-        model.parameters(), lr = args.learning_rate, alpha = alpha, weight_decay = weight_decay
-    )
-
-
-scheduler = None
-if args.scheduler != None:
-    if args.scheduler == 'cosanneal':
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs * len(train_loader))
-    elif args.scheduler == 'cosannealrest':
-        scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, args.epochs * len(train_loader))
-    elif args.scheduler == 'plateau':
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', type = float)
-
-wandb.watch(model, log = 'all')
-
-def train():
+def train(args, train_loader, test_loader, optimizer, scheduler):
 
     best_test_acc = 0.0
     running_train_acc = 0.0
@@ -388,4 +295,99 @@ def train():
             'final_test_loss' : avg_test_loss
         })
 
-train()
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--epochs", help = "Enter epochs", type = int)
+    parser.add_argument("--learning_rate", help = "Enter Learning Rate", type = float)
+    parser.add_argument("--batch_size", help = "Enter Batch size", type = int)
+    parser.add_argument("--optimizer", help = 'Enter optimizer (adam/sgd/rmsprop)')
+    parser.add_argument("--betas_adam", help = 'Enter betas of adam (comma separated)', type = str)
+    parser.add_argument("--mom_coeff", help = 'Enter coeff of momentum (float)', type = float)
+    parser.add_argument("--alpha_rmsprop", help = 'Enter alpha of rmsprop (float)', type = float)
+    parser.add_argument("--scheduler", help = 'Enter lr scheduler (cosanneal/plateau/cosannelrest)', type = str)
+    parser.add_argument("--weight_decay", help = 'Enter weight decay coeff', type = float)
+
+    args = parser.parse_args()
+    assert args.epochs != None
+    assert args.batch_size != None
+    assert args.optimizer != None
+    assert args.learning_rate != None
+
+    wandb.login(key = 'b567ff0e49926099eea499997b7a78c48d2bbf48')
+    wandb.init(project = 'fusenet')
+
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0") 
+        print("Running on the GPU")
+    else:
+        device = torch.device("cpu")
+        print("Running on the CPU")
+
+    train_set = CIFAR100(root = './data', train = True, download = True, transform = transform_train)
+    test_set = CIFAR100(root = './data', train = False, download = True, transform = transform_test)
+
+    train_loader = DataLoader(train_set, batch_size = args.batch_size, shuffle = True, num_workers = 2)
+    test_loader = DataLoader(test_set, batch_size = args.batch_size, shuffle = False, num_workers = 2)
+
+    model = FuseNet().to(device)
+    model.apply(initialize_weights)
+    criterion = nn.CrossEntropyLoss()
+
+    # parsing cmd line args
+    if args.optimizer == 'adam':
+        if args.betas_adam != None:
+            beta1, beta2 = list(map(float, args.betas_adam.split(',')))
+        else:
+            beta1, beta2 = 0.9, 0.999
+
+        if args.weight_decay != None:
+            weight_decay = args.weight_decay
+
+        optimizer = optim.Adam(
+            model.parameters(), lr = args.learning_rate, betas = (beta1, beta2), weight_decay = weight_decay
+        )
+
+    elif args.optimizer == 'sgd':
+        if args.mom_coeff != None:
+            momentum = args.mom_coeff
+        else:
+            momentum = 0.9
+
+        if args.weight_decay != None:
+            weight_decay = args.weight_decay
+        else:
+            weight_decay = 0
+
+        optimizer = optim.SGD(
+            model.parameters(), lr = args.learning_rate, momentum = momentum, weight_decay = weight_decay, nesterov = True
+        )
+
+    elif args.optimizer == 'rmsprop':
+        if args.alpha_rmsprop != None:
+            alpha = args.alpha_rmsprop
+        else:
+            alpha = 0.99
+
+        if args.weight_decay != None:
+            weight_decay = args.weight_decay
+        else:
+            weight_decay = 0
+
+        optimizer = optim.RMSprop(
+            model.parameters(), lr = args.learning_rate, alpha = alpha, weight_decay = weight_decay
+        )
+
+
+    scheduler = None
+    if args.scheduler != None:
+        if args.scheduler == 'cosanneal':
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs * len(train_loader))
+        elif args.scheduler == 'cosannealrest':
+            scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, args.epochs * len(train_loader))
+        elif args.scheduler == 'plateau':
+            scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', type = float)
+
+    wandb.watch(model, log = 'all')
+
+    train(args, train_loader, test_loader, optimizer, scheduler) 
