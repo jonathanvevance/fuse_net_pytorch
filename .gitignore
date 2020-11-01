@@ -9,3 +9,6 @@ fuse_net_tips/
 
 # wandb
 wandb/
+
+# lightning logs
+lightning_logs

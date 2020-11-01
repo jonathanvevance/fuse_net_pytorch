@@ -1,6 +1,7 @@
 import torch
 import argparse
 import torch.nn as nn
+import pytorch_lightning as pl
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, IterableDataset
@@ -87,7 +88,7 @@ class FuseBlock(nn.Module):
         x = self.batch_norm_11_final(self.conv_11_final(x))
         return x
 
-class FuseNet(nn.Module):
+class FuseNet(pl.LightningModule):
     def __init__(self):
 
         super(FuseNet, self).__init__()
@@ -157,21 +158,47 @@ class FuseNet(nn.Module):
             x = layer(x)
         return x
 
-def initialize_weights(net):
+    def training_step(self, batch, batch_idx):
+        inputs, labels = batch
+        output = self(inputs).squeeze()
+        loss = F.cross_entropy(output, labels)
+        return {'loss': loss}
 
-    for m in net.modules():                                                                                          
-        if isinstance(m, nn.Conv2d):                                                                                         
-            nn.init.kaiming_normal_(m.weight, mode='fan_out')                                                                
-            if m.bias is not None:                                                                                           
-                nn.init.zeros_(m.bias)                                                                                       
-        elif isinstance(m, nn.BatchNorm2d):                                                                                  
-            nn.init.ones_(m.weight)                                                                                          
-            nn.init.zeros_(m.bias)                                                                                           
-        elif isinstance(m, nn.Linear):                                                                                       
-            nn.init.normal_(m.weight, 0, 0.01)                                                                               
-            if m.bias is not None:                                                                                           
-                nn.init.zeros_(m.bias)
+    def configure_optimizers(self):
+        return optimizer
 
+    def train_dataloader(self):
+        
+        train_set = CIFAR100(root = './data', train = True, 
+                             download = True, transform = transform_train)
+
+        train_loader = DataLoader(
+            train_set, batch_size = args.batch_size, 
+            shuffle = True, num_workers = 2)
+
+        return train_loader
+
+    def validation_step(self, batch, batch_idx):
+        inputs, labels = batch
+        output = self(inputs).squeeze()
+        loss = F.cross_entropy(output, labels)
+        return {'val_loss': loss}
+
+    def val_dataloader(self):
+        
+        test_set = CIFAR100(root = './data', train = False, 
+                             download = True, transform = transform_test)
+
+        test_loader = DataLoader(
+            test_set, batch_size = args.batch_size, 
+            shuffle = False, num_workers = 2)
+
+        return test_loader
+
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+
+# transforms
 transform_train = transforms.Compose([
                     transforms.RandomCrop(32, padding=4),                                                                                                                               
                     transforms.RandomHorizontalFlip(),                                                                                                                                  
@@ -184,119 +211,6 @@ transform_test = transforms.Compose([
                     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),                                                                                           
 ])
 
-
-def train(args, train_loader, test_loader, optimizer, scheduler):
-
-    best_test_acc = 0.0
-    running_train_acc = 0.0
-    running_train_loss = 0.0
-
-    for epoch in range(args.epochs):
-        print(f'\nepoch {epoch}')
-        for i, (inputs, labels) in enumerate(train_loader, 0):
-
-            inputs, labels = inputs.to(device), labels.to(device)
-            optimizer.zero_grad()
-            output = model(inputs).squeeze()
-            loss = criterion(output, labels)
-
-            loss.backward()
-            optimizer.step()
-
-            output = model(inputs).squeeze()
-            preds = torch.argmax(output, dim = 1)
-            accuracy = (preds == labels).float().mean()
-            running_train_acc += accuracy
-            running_train_loss += loss.item()
-
-            print(f"\rloss: {loss.item()}, accuracy = {accuracy}", end = "", flush = True)
-
-            if log:
-                if (i % 2000 == 1999) and (i > 0):
-                    
-                    wandb.log({
-                        "running_acc_2000" : running_acc / 2000,
-                        "running_loss_2000" : running_loss/2000
-                    })
-
-                    running_train_acc = running_train_loss = 0
-
-            if scheduler != None:
-                if args.scheduler != 'plateau':
-        	        scheduler.step()
-
-        with torch.no_grad():
-            avg_train_loss, avg_train_acc = [], []
-            for j, (input_train, y_train) in enumerate(train_loader):
-                input_train, y_train = input_train.to(device), y_train.to(device)
-                train_preds = model(input_train).squeeze()
-                train_loss = criterion(train_preds, y_train)
-                avg_train_loss.append(train_loss.item())
-                train_preds = torch.argmax(train_preds, dim = 1)
-                train_acc = (train_preds == y_train).float().mean().item()
-                avg_train_acc.append(train_acc)
-
-                if j == 14:
-                    break
-
-            avg_train_loss = sum(avg_train_loss) / len(avg_train_loss)
-            avg_train_acc = sum(avg_train_acc) / len(avg_train_acc)
-            print(f"\nTrain loss = {round(avg_train_loss, 4)}; Train accuracy = {round(avg_train_acc, 4)} (on {15*args.batch_size} imgs)")
-
-            avg_test_loss, avg_test_acc = [], []
-            for j, (input_test, y_test) in enumerate(test_loader):
-                input_test, y_test = input_test.to(device), y_test.to(device)
-                test_preds = model(input_test).squeeze()
-                test_loss = criterion(test_preds, y_test)
-                avg_test_loss.append(test_loss.item())
-                test_preds = torch.argmax(test_preds, dim = 1)
-                test_acc = (test_preds == y_test).float().mean().item()
-                avg_test_acc.append(test_acc)
-
-            avg_test_loss = sum(avg_test_loss) / len(avg_test_loss)
-            avg_test_acc = sum(avg_test_acc) / len(avg_test_acc)
-            print(f"Test loss = {round(avg_test_loss, 4)}; Test accuracy = {round(avg_test_acc, 4)}\n")
-
-            if log:
-                wandb.log({
-                    "test_acc": avg_test_acc,
-                    "test_loss": avg_test_loss,
-                    "train_acc_mini": avg_train_acc,
-                    "train_loss_mini": avg_train_loss
-                })
-
-                if avg_test_acc > best_test_acc:
-                    wandb.save('best' + str(avg_test_acc) + '.h5')
-                    best_test_acc = avg_test_acc
-                else:
-                    wandb.save('latest' + str(avg_test_acc) + '.h5')
-
-            if scheduler != None:
-                if args.scheduler == 'plateau':
-                    scheduler.step(avg_test_loss)
-
-    print('\n\nFinished Training')
-    with torch.no_grad():
-        avg_test_loss, avg_test_acc = [], []
-        for j, (input_test, y_test) in enumerate(test_loader):
-            input_test, y_test = input_test.to(device), y_test.to(device)
-            test_preds = model(input_test).squeeze()
-            test_loss = criterion(test_preds, y_test)
-            avg_test_loss.append(test_loss.item())
-            test_preds = torch.argmax(test_preds, dim = 1)
-            test_acc = (test_preds == y_test).float().mean().item()
-            avg_test_acc.append(test_acc)
-
-        avg_test_loss = sum(avg_test_loss) / len(avg_test_loss)
-        avg_test_acc = sum(avg_test_acc) / len(avg_test_acc)
-        print(f"Final test loss = {round(avg_test_loss, 4)}; Final test accuracy = {round(avg_test_acc, 4)}\n")
-
-        if log:
-            wandb.log({
-                'final_test_acc' : avg_test_acc,
-                'final_test_loss' : avg_test_loss
-            })
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -307,9 +221,7 @@ if __name__ == '__main__':
     parser.add_argument("--betas_adam", help = 'Enter betas of adam (comma separated)', type = str)
     parser.add_argument("--mom_coeff", help = 'Enter coeff of momentum (float)', type = float)
     parser.add_argument("--alpha_rmsprop", help = 'Enter alpha of rmsprop (float)', type = float)
-    parser.add_argument("--scheduler", help = 'Enter lr scheduler (cosanneal/plateau/cosannelrest)', type = str)
     parser.add_argument("--weight_decay", help = 'Enter weight decay coeff', type = float)
-    parser.add_argument("--log", help = "Enter 1 to log, 0 not to", type = int)
 
     args = parser.parse_args()
     assert args.epochs != None
@@ -317,32 +229,10 @@ if __name__ == '__main__':
     assert args.optimizer != None
     assert args.learning_rate != None
 
-    global log
-    log = args.log
+    model = FuseNet()
 
-    if log:
-        import wandb
-        wandb.login(key = 'b567ff0e49926099eea499997b7a78c48d2bbf48')
-        wandb.init(project = 'fusenet')
-
-    if torch.cuda.is_available():
-        device = torch.device("cuda:0") 
-        print("Running on the GPU")
-    else:
-        device = torch.device("cpu")
-        print("Running on the CPU")
-
-    train_set = CIFAR100(root = './data', train = True, download = True, transform = transform_train)
-    test_set = CIFAR100(root = './data', train = False, download = True, transform = transform_test)
-
-    train_loader = DataLoader(train_set, batch_size = args.batch_size, shuffle = True, num_workers = 2)
-    test_loader = DataLoader(test_set, batch_size = args.batch_size, shuffle = False, num_workers = 2)
-
-    model = FuseNet().to(device)
-    model.apply(initialize_weights)
-    criterion = nn.CrossEntropyLoss()
-
-    # parsing cmd line args
+    # cmd line args
+    global optimizer 
     if args.optimizer == 'adam':
         if args.betas_adam != None:
             beta1, beta2 = list(map(float, args.betas_adam.split(',')))
@@ -386,17 +276,5 @@ if __name__ == '__main__':
             model.parameters(), lr = args.learning_rate, alpha = alpha, weight_decay = weight_decay
         )
 
-
-    scheduler = None
-    if args.scheduler != None:
-        if args.scheduler == 'cosanneal':
-            scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs * len(train_loader))
-        elif args.scheduler == 'cosannealrest':
-            scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, args.epochs * len(train_loader))
-        elif args.scheduler == 'plateau':
-            scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', type = float)
-
-    if log:
-        wandb.watch(model, log = 'all')
-
-    train(args, train_loader, test_loader, optimizer, scheduler) 
+    trainer = pl.Trainer(max_epochs = args.epochs, fast_dev_run = False, gpus = 1)
+    trainer.fit(model)
