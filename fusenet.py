@@ -321,8 +321,8 @@ if __name__ == '__main__':
     log = args.log
 
     if log:
-        import wandb
-        wandb.login(key = 'b567ff0e49926099eea499997b7a78c48d2bbf48')
+        import wandb 
+        # Run wandb login in cmd
         wandb.init(project = 'fusenet')
 
     if torch.cuda.is_available():
