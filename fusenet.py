@@ -2,6 +2,7 @@ import torch
 import wandb
 import argparse
 import torch.nn as nn
+import pytorch_lightning as pl
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, IterableDataset
@@ -10,7 +11,7 @@ import torchvision.transforms as transforms
 
 H = W = 32
 
-class Hsigmoid(nn.Module):
+class Hsigmoid(nn.Module): # change here?
     def __init__(self, inplace = True):
         super(Hsigmoid, self).__init__()
         self.inplace = inplace
@@ -18,7 +19,7 @@ class Hsigmoid(nn.Module):
     def forward(self, x):
         return F.relu6(x + 3., inplace = self.inplace) / 6.
 
-class SEModule(nn.Module):
+class SEModule(nn.Module): # change here?
     def __init__(self, channel, reduction = 4):
         super(SEModule, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)                                                                                                                                             
@@ -88,7 +89,7 @@ class FuseBlock(nn.Module):
         x = self.batch_norm_11_final(self.conv_11_final(x))
         return x
 
-class FuseNet(nn.Module):
+class FuseNet(pl.LightningModule):
     def __init__(self):
 
         super(FuseNet, self).__init__()
@@ -157,6 +158,25 @@ class FuseNet(nn.Module):
         for layer in self.layers:
             x = layer(x)
         return x
+
+    def training_step(self, batch, batch_idx):
+        inputs, labels = batch
+        output = self(inputs).squeeze()
+        loss = F.cross_entropy(output, labels)
+        return {'loss': loss}
+
+    def configure_optimizers(self):
+        return optimizer
+
+    def train_dataloader(self):
+        train_set = CIFAR100(root = './data', train = True, 
+                             download = True, transform = transform_train)
+
+        train_loader = DataLoader(
+            train_set, batch_size = args.batch_size, 
+            shuffle = True, num_workers = 4)
+
+        return train_loader
 
 def initialize_weights(net):
 
@@ -323,17 +343,18 @@ if __name__ == '__main__':
         device = torch.device("cpu")
         print("Running on the CPU")
 
-    train_set = CIFAR100(root = './data', train = True, download = True, transform = transform_train)
-    test_set = CIFAR100(root = './data', train = False, download = True, transform = transform_test)
+    # train_set = CIFAR100(root = './data', train = True, download = True, transform = transform_train)
+    # test_set = CIFAR100(root = './data', train = False, download = True, transform = transform_test)
 
-    train_loader = DataLoader(train_set, batch_size = args.batch_size, shuffle = True, num_workers = 2)
-    test_loader = DataLoader(test_set, batch_size = args.batch_size, shuffle = False, num_workers = 2)
+    # train_loader = DataLoader(train_set, batch_size = args.batch_size, shuffle = True, num_workers = 2)
+    # test_loader = DataLoader(test_set, batch_size = args.batch_size, shuffle = False, num_workers = 2)
 
-    model = FuseNet().to(device)
-    model.apply(initialize_weights)
-    criterion = nn.CrossEntropyLoss()
+    model = FuseNet()
+    # model.apply(initialize_weights)
+    # criterion = nn.CrossEntropyLoss()
 
     # parsing cmd line args
+    global optimizer ##cl
     if args.optimizer == 'adam':
         if args.betas_adam != None:
             beta1, beta2 = list(map(float, args.betas_adam.split(',')))
@@ -377,7 +398,7 @@ if __name__ == '__main__':
             model.parameters(), lr = args.learning_rate, alpha = alpha, weight_decay = weight_decay
         )
 
-
+    scheduler = None ## later
     scheduler = None
     if args.scheduler != None:
         if args.scheduler == 'cosanneal':
@@ -387,6 +408,8 @@ if __name__ == '__main__':
         elif args.scheduler == 'plateau':
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', type = float)
 
-    wandb.watch(model, log = 'all')
+    # wandb.watch(model, log = 'all')
 
-    train(args, train_loader, test_loader, optimizer, scheduler) 
+    # train(args, train_loader, test_loader, optimizer, scheduler) 
+    trainer = pl.Trainer(fast_dev_run = True, gpus = 1)
+    trainer.fit(model)
