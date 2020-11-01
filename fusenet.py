@@ -1,5 +1,4 @@
 import torch
-import wandb
 import argparse
 import torch.nn as nn
 import pytorch_lightning as pl
@@ -232,14 +231,15 @@ def train(args, train_loader, test_loader, optimizer, scheduler):
 
             print(f"\rloss: {loss.item()}, accuracy = {accuracy}", end = "", flush = True)
 
-            if (i % 2000 == 1999) and (i > 0):
+            if log:
+                if (i % 2000 == 1999) and (i > 0):
+                    
+                    wandb.log({
+                        "running_acc_2000" : running_acc / 2000,
+                        "running_loss_2000" : running_loss/2000
+                    })
 
-                wandb.log({
-                    "running_acc_2000" : running_acc / 2000,
-                    "running_loss_2000" : running_loss/2000
-                })
-
-                running_train_acc = running_train_loss = 0
+                    running_train_acc = running_train_loss = 0
 
             if scheduler != None:
                 if args.scheduler != 'plateau':
@@ -277,18 +277,19 @@ def train(args, train_loader, test_loader, optimizer, scheduler):
             avg_test_acc = sum(avg_test_acc) / len(avg_test_acc)
             print(f"Test loss = {round(avg_test_loss, 4)}; Test accuracy = {round(avg_test_acc, 4)}\n")
 
-            wandb.log({
-                "test_acc": avg_test_acc,
-                "test_loss": avg_test_loss,
-                "train_acc_mini": avg_train_acc,
-                "train_loss_mini": avg_train_loss
-            })
+            if log:
+                wandb.log({
+                    "test_acc": avg_test_acc,
+                    "test_loss": avg_test_loss,
+                    "train_acc_mini": avg_train_acc,
+                    "train_loss_mini": avg_train_loss
+                })
 
-            if avg_test_acc > best_test_acc:
-                wandb.save('best' + str(avg_test_acc) + '.h5')
-                best_test_acc = avg_test_acc
-            else:
-                wandb.save('latest' + str(avg_test_acc) + '.h5')
+                if avg_test_acc > best_test_acc:
+                    wandb.save('best' + str(avg_test_acc) + '.h5')
+                    best_test_acc = avg_test_acc
+                else:
+                    wandb.save('latest' + str(avg_test_acc) + '.h5')
 
             if scheduler != None:
                 if args.scheduler == 'plateau':
@@ -309,10 +310,12 @@ def train(args, train_loader, test_loader, optimizer, scheduler):
         avg_test_loss = sum(avg_test_loss) / len(avg_test_loss)
         avg_test_acc = sum(avg_test_acc) / len(avg_test_acc)
         print(f"Final test loss = {round(avg_test_loss, 4)}; Final test accuracy = {round(avg_test_acc, 4)}\n")
-        wandb.log({
-            'final_test_acc' : avg_test_acc,
-            'final_test_loss' : avg_test_loss
-        })
+
+        if log:
+            wandb.log({
+                'final_test_acc' : avg_test_acc,
+                'final_test_loss' : avg_test_loss
+            })
 
 if __name__ == '__main__':
 
@@ -326,6 +329,7 @@ if __name__ == '__main__':
     parser.add_argument("--alpha_rmsprop", help = 'Enter alpha of rmsprop (float)', type = float)
     parser.add_argument("--scheduler", help = 'Enter lr scheduler (cosanneal/plateau/cosannelrest)', type = str)
     parser.add_argument("--weight_decay", help = 'Enter weight decay coeff', type = float)
+    parser.add_argument("--log", help = "Enter 1 to log, 0 not to", type = int)
 
     args = parser.parse_args()
     assert args.epochs != None
@@ -333,8 +337,13 @@ if __name__ == '__main__':
     assert args.optimizer != None
     assert args.learning_rate != None
 
-    wandb.login(key = 'b567ff0e49926099eea499997b7a78c48d2bbf48')
-    wandb.init(project = 'fusenet')
+    global log
+    log = args.log
+
+    if log:
+        import wandb
+        wandb.login(key = 'b567ff0e49926099eea499997b7a78c48d2bbf48')
+        wandb.init(project = 'fusenet')
 
     if torch.cuda.is_available():
         device = torch.device("cuda:0") 
@@ -408,7 +417,8 @@ if __name__ == '__main__':
         elif args.scheduler == 'plateau':
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', type = float)
 
-    # wandb.watch(model, log = 'all')
+    if log:
+        wandb.watch(model, log = 'all')
 
     # train(args, train_loader, test_loader, optimizer, scheduler) 
     trainer = pl.Trainer(fast_dev_run = True, gpus = 1)
