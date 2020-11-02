@@ -331,8 +331,8 @@ if __name__ == '__main__':
         device = torch.device("cpu")
         print("Running on the CPU")
 
-    train_set = CIFAR100(root = 'D:/ML projects/fuse_net_pytorch/data', train = True, download = True, transform = transform_train)
-    test_set = CIFAR100(root = 'D:/ML projects/fuse_net_pytorch/data', train = False, download = True, transform = transform_test)
+    train_set = CIFAR100(root = './data', train = True, download = True, transform = transform_train)
+    test_set = CIFAR100(root = './data', train = False, download = True, transform = transform_test)
 
     train_loader = DataLoader(train_set, batch_size = args.batch_size, shuffle = True, num_workers = 2)
     test_loader = DataLoader(test_set, batch_size = args.batch_size, shuffle = False, num_workers = 2)
