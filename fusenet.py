@@ -3,7 +3,7 @@ import argparse
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, IterableDataset
+from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR100
 import torchvision.transforms as transforms
 
