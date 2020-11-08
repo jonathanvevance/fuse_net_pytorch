@@ -214,8 +214,8 @@ def train(args, train_loader, test_loader, optimizer, scheduler):
                 if (i % 2000 == 1999) and (i > 0):
                     
                     wandb.log({
-                        "running_acc_2000" : running_acc / 2000,
-                        "running_loss_2000" : running_loss/2000
+                        "running_acc_2000" : running_train_acc / 2000,
+                        "running_loss_2000" : running_train_loss/2000
                     })
 
                     running_train_acc = running_train_loss = 0
