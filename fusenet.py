@@ -323,6 +323,10 @@ if __name__ == '__main__':
     if args.learning_rate == None:
         args.learning_rate = 0.05
 
+    print(f'Settings:\noptimizer = {args.optimizer} , lr = {args.learning_rate} , epochs = {args.epochs} , ', end = '')
+    print(f'batch size = {args.batch_size} , mom_coeff = {args.mom_coeff} , alpha_rmsprop = {args.alpha_rmsprop} , ', end = "")
+    print(f'betas_adam = {args.betas_adam} , weight decay = {args.weight_decay} , scheduler = {args.scheduler} , log = {args.log}\n')
+
     global log
     log = args.log
 
