@@ -311,10 +311,17 @@ if __name__ == '__main__':
     parser.add_argument("--log", help = "Enter 1 to log, 0 not to", type = int)
 
     args = parser.parse_args()
-    assert args.epochs != None
-    assert args.batch_size != None
-    assert args.optimizer != None
-    assert args.learning_rate != None
+    if args.epochs == None:
+       args.epochs = 50
+
+    if args.batch_size == None:
+        args.batch_size = 512
+
+    if args.optimizer == None:
+        args.optimizer = 'sgd'
+
+    if args.learning_rate == None:
+        args.learning_rate = 0.05
 
     global log
     log = args.log
